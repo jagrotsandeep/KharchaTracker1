@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Kharcha Tracker</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:'Segoe UI',sans-serif; background:#f0f2f5; min-height:100vh; padding-bottom:70px; }
+
+  .header {
+    background:#1a2035; padding:16px 20px;
+    display:flex; justify-content:space-between; align-items:center;
+    position:sticky; top:0; z-index:100;
+  }
+  .header-title { font-size:22px; font-weight:800; color:#fff; }
+  .header-title span { color:#00d4ff; }
+  .header-sub { font-size:12px; color:#8892a4; }
+
+  .bottom-nav {
+    position:fixed; bottom:0; left:0; right:0;
+    background:#fff; display:flex;
+    box-shadow:0 -2px 12px rgba(0,0,0,0.1);
+    z-index:100; height:60px;
+  }
+  .nav-btn {
+    flex:1; border:none; background:transparent;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    font-size:11px; color:#8892a4; cursor:pointer;
+    transition:all 0.2s; gap:3px;
+  }
+  .nav-btn .nav-icon { font-size:20px; }
+  .nav-btn.active { color:#1a2035; font-weight:700; }
+
+  .page { display:none; }
+  .page.active { display:block; }
+
+  .cards-container { padding:16px; display:flex; flex-direction:column; gap:12px; }
+
+  .balance-card {
+    background:#162447; border-radius:16px;
+    padding:24px 20px; color:#fff;
+  }
+  .card-icon { font-size:28px; margin-bottom:8px; }
+  .card-label {
+    font-size:11px; font-weight:700;
+    letter-spacing:1.5px; color:#8892a4;
+    text-transform:uppercase; margin-bottom:8px;
+  }
+  .balance-amount { font-size:36px; font-weight:800; color:#fff; }
+
+  .income-card {
+    background:#e8f5e9; border-radius:16px;
+    padding:20px; border:1px solid #c8e6c9; flex:1;
+  }
+  .income-card .card-label { color:#388e3c; }
+  .income-card .amount { font-size:28px; font-weight:800; color:#2e7d32; }
+
+  .expense-card {
+    background:#fce4ec; border-radius:16px;
+    padding:20px; border:1px solid #f8bbd0; flex:1;
+  }
+  .expense-card .card-label { color:#c62828; }
+  .expense-card .amount { font-size:28px; font-weight:800; color:#c62828; }
+
+  .meter-card {
+    background:#fff; border-radius:16px;
+    padding:20px; margin:0 16px 12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  }
+  .section-title {
+    font-size:11px; font-weight:800;
+    letter-spacing:1.5px; color:#1a2035;
+    text-transform:uppercase; margin-bottom:12px;
+  }
+  .divider { height:1px; background:#f0f0f0; margin-bottom:14px; }
+  .meter-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .meter-label { font-size:14px; color:#555; }
+  .meter-pct { font-size:16px; font-weight:800; color:#1a2035; }
+  .progress-bar { height:10px; background:#e0e0e0; border-radius:10px; overflow:hidden; margin-bottom:10px; }
+  .progress-fill { height:100%; border-radius:10px; transition:width 0.5s ease; }
+  .meter-status { font-size:13px; color:#555; }
+
+  .form-card {
+    background:#fff; border-radius:16px;
+    padding:20px; margin:0 16px 12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  }
+  .form-group { margin-bottom:14px; }
+  .form-group label { font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px; }
+  .form-input {
+    width:100%; padding:12px 14px;
+    border:1.5px solid #e0e0e0; border-radius:10px;
+    font-size:14px; color:#333; outline:none;
+    transition:border-color 0.2s; background:#fafafa;
+  }
+  .form-input:focus { border-color:#1a2035; background:#fff; }
+  .form-row { display:flex; gap:10px; }
+  .form-row .form-group { flex:1; }
+  select.form-input { appearance:none; -webkit-appearance:none; }
+
+  /* Type Toggle */
+  .type-toggle { display:flex; gap:10px; }
+  .type-btn {
+    flex:1; padding:12px;
+    border:2px solid #e0e0e0; border-radius:10px;
+    background:#fff; font-size:14px; font-weight:600;
+    cursor:pointer; transition:all 0.2s; color:#666;
+  }
+  .type-btn.income.active { border-color:#2e7d32; background:#e8f5e9; color:#2e7d32; }
+  .type-btn.expense.active { border-color:#c62828; background:#fce4ec; color:#c62828; }
+
+  /* Payment Toggle */
+  .pay-toggle { display:flex; gap:10px; }
+  .pay-btn {
+    flex:1; padding:11px;
+    border:2px solid #e0e0e0; border-radius:10px;
+    background:#fff; font-size:13px; font-weight:600;
+    cursor:pointer; transition:all 0.2s; color:#666;
+  }
+  .pay-btn.active { border-color:#1a2035; background:#e8eaf6; color:#1a2035; }
+
+  .add-btn {
+    width:100%; padding:14px;
+    background:#1a2035; border:none; border-radius:10px;
+    color:#fff; font-size:15px; font-weight:700;
+    cursor:pointer; margin-top:6px; transition:opacity 0.2s;
+  }
+  .add-btn:active { opacity:0.8; }
+
+  /* History */
+  .history-section {
+    background:#fff; border-radius:16px;
+    padding:20px; margin:0 16px 12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  }
+  .history-header {
+    display:flex; justify-content:space-between;
+    align-items:center; margin-bottom:12px;
+  }
+  .clear-btn {
+    padding:6px 12px; border:1.5px solid #ddd;
+    border-radius:8px; background:#fff;
+    font-size:12px; color:#666; cursor:pointer;
+  }
+
+  .filter-chips { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+  .chip {
+    padding:7px 16px; border-radius:20px;
+    border:1.5px solid #e0e0e0; background:#fff;
+    font-size:13px; font-weight:600; color:#666; cursor:pointer;
+    transition:all 0.2s;
+  }
+  .chip.active { background:#1a2035; color:#fff; border-color:#1a2035; }
+
+  .txn-list { display:flex; flex-direction:column; gap:10px; }
+  .txn-item {
+    display:flex; align-items:center;
+    background:#fff; border-radius:12px;
+    padding:14px 12px; gap:12px;
+    border:1px solid #f0f0f0;
+    border-left:4px solid #ccc;
+    box-shadow:0 1px 4px rgba(0,0,0,0.04);
+  }
+  .txn-item.expense { border-left-color:#ef4444; }
+  .txn-item.income  { border-left-color:#22c55e; }
+  .txn-emoji {
+    width:44px; height:44px; background:#f5f5f5;
+    border-radius:10px; display:flex;
+    align-items:center; justify-content:center;
+    font-size:22px; flex-shrink:0;
+  }
+  .txn-info { flex:1; min-width:0; }
+  .txn-name { font-size:15px; font-weight:700; color:#1a2035; }
+  .txn-meta { font-size:12px; color:#8892a4; margin-top:2px; }
+
+  /* Payment badge */
+  .pay-badge {
+    font-size:10px; font-weight:700;
+    padding:2px 7px; border-radius:6px;
+    display:inline-block; margin-left:4px;
+  }
+  .pay-badge.cash { background:#fff3e0; color:#e65100; }
+  .pay-badge.online { background:#e3f2fd; color:#1565c0; }
+
+  .txn-amount { font-size:15px; font-weight:800; flex-shrink:0; }
+  .txn-amount.expense { color:#ef4444; }
+  .txn-amount.income  { color:#22c55e; }
+  .txn-del {
+    width:30px; height:30px;
+    border:1.5px solid #e0e0e0; border-radius:8px;
+    background:#fff; font-size:14px; color:#999;
+    cursor:pointer; display:flex;
+    align-items:center; justify-content:center; flex-shrink:0;
+  }
+
+  .empty-state { text-align:center; padding:30px 20px; color:#aaa; }
+  .empty-icon { font-size:40px; margin-bottom:10px; }
+  .empty-text { font-size:13px; }
+
+  #history-page { padding:16px; }
+  #history-page .history-section { margin:0; }
+
+  /* Offline banner */
+  .offline-banner {
+    display:none; position:sticky; top:0; z-index:99;
+    background:#c62828; color:#fff; text-align:center;
+    font-size:12px; font-weight:700; padding:6px;
+  }
+  .offline-banner.show { display:block; }
+
+  /* Last month card */
+  .lastmonth-card {
+    background:#fff; border-radius:16px;
+    padding:16px 20px; margin-top:0;
+    display:flex; justify-content:space-between; align-items:center;
+    box-shadow:0 2px 8px rgba(0,0,0,0.06);
+  }
+  .lastmonth-label { font-size:12px; color:#8892a4; font-weight:700; }
+  .lastmonth-name { font-size:14px; color:#1a2035; font-weight:800; margin-top:2px; }
+  .lastmonth-nums { text-align:right; font-size:12px; }
+  .lastmonth-nums .in  { color:#2e7d32; font-weight:700; }
+  .lastmonth-nums .out { color:#c62828; font-weight:700; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">Kharcha <span>Tracker</span></div>
+  <div class="header-sub">by CodeKaroBhai</div>
+</div>
+
+<div class="offline-banner" id="offline-banner">📡 Internet nahi hai — offline mode</div>
+
+<!-- HOME PAGE -->
+<div id="home-page" class="page active">
+
+  <div class="cards-container">
+    <div class="balance-card">
+      <div class="card-icon">💼</div>
+      <div class="card-label">Net Balance</div>
+      <div class="balance-amount" id="net-balance">₹0</div>
+    </div>
+    <div style="display:flex;gap:12px;">
+      <div class="income-card">
+        <div class="card-icon">📈</div>
+        <div class="card-label">Total Income</div>
+        <div class="amount" id="total-income">₹0</div>
+      </div>
+      <div class="expense-card">
+        <div class="card-icon">📉</div>
+        <div class="card-label">Total Expense</div>
+        <div class="amount" id="total-expense">₹0</div>
+      </div>
+    </div>
+
+    <!-- Last Month Summary (reference only, current totals upar wale hamesha isi month ke hote hain) -->
+    <div class="lastmonth-card" id="lastmonth-card" style="display:none;">
+      <div>
+        <div class="lastmonth-label">PICHLA MAHINA</div>
+        <div class="lastmonth-name" id="lastmonth-name">-</div>
+      </div>
+      <div class="lastmonth-nums">
+        <div class="in" id="lastmonth-income">+₹0</div>
+        <div class="out" id="lastmonth-expense">-₹0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spending Meter -->
+  <div class="meter-card">
+    <div class="section-title">Spending Meter</div>
+    <div class="divider"></div>
+    <div class="meter-row">
+      <span class="meter-label">Expense / Income</span>
+      <span class="meter-pct" id="spend-pct">0%</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="progress-fill" style="width:0%;background:#22c55e;"></div>
+    </div>
+    <div class="meter-status" id="meter-status">😊 Pehle kuch add karo!</div>
+  </div>
+
+  <!-- Add Transaction Form -->
+  <div class="form-card">
+    <div class="section-title">Add Transaction</div>
+    <div class="divider"></div>
+
+    <div class="form-group">
+      <label>Transaction Name</label>
+      <input class="form-input" id="txn-name" type="text" placeholder="e.g. Maggi, Salary, Recharge...">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Amount (₹)</label>
+        <input class="form-input" id="txn-amount" type="number" placeholder="0" min="0">
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select class="form-input" id="txn-category">
+          <option value="Food">🍜 Food</option>
+          <option value="Transport">🚗 Transport</option>
+          <option value="Bills">💡 Bills</option>
+          <option value="Shopping">🛒 Shopping</option>
+          <option value="Entertainment">🎮 Entertainment</option>
+          <option value="Education">📚 Education</option>
+          <option value="Salary">💼 Salary</option>
+          <option value="Other">💰 Other</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Type -->
+    <div class="form-group">
+      <label>Type</label>
+      <div class="type-toggle">
+        <button class="type-btn income active" id="btn-income" onclick="setType('income')">📈 Income</button>
+        <button class="type-btn expense" id="btn-expense" onclick="setType('expense')">📉 Expense</button>
+      </div>
+    </div>
+
+    <!-- Payment Method -->
+    <div class="form-group">
+      <label>Payment Method</label>
+      <div class="pay-toggle">
+        <button class="pay-btn active" id="btn-cash" onclick="setPayment('cash')">💵 Cash</button>
+        <button class="pay-btn" id="btn-online" onclick="setPayment('online')">📱 Online</button>
+      </div>
+    </div>
+
+    <button class="add-btn" onclick="addTransaction()">+ Add Transaction</button>
+  </div>
+
+  <!-- Recent on Home — NO delete button -->
+  <div class="history-section">
+    <div class="history-header">
+      <div class="section-title">Recent Transactions</div>
+    </div>
+    <div class="divider"></div>
+    <div class="filter-chips">
+      <div class="chip active" onclick="setFilter('all',this)">All</div>
+      <div class="chip" onclick="setFilter('income',this)">Income</div>
+      <div class="chip" onclick="setFilter('expense',this)">Expense</div>
+    </div>
+    <div class="txn-list" id="txn-list-home"></div>
+  </div>
+</div>
+
+<!-- HISTORY PAGE — with delete -->
+<div id="history-page" class="page">
+  <div class="history-section">
+    <div class="history-header">
+      <div class="section-title">Transaction History</div>
+      <button class="clear-btn" onclick="clearAll()">Clear All</button>
+    </div>
+    <div class="divider"></div>
+    <div class="filter-chips">
+      <div class="chip active" onclick="setFilterH('all',this)">All</div>
+      <div class="chip" onclick="setFilterH('income',this)">Income</div>
+      <div class="chip" onclick="setFilterH('expense',this)">Expense</div>
+      <div class="chip" onclick="setFilterH('cash',this)">💵 Cash</div>
+      <div class="chip" onclick="setFilterH('online',this)">📱 Online</div>
+    </div>
+    <div class="txn-list" id="txn-list-history"></div>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <button class="nav-btn active" id="nav-home" onclick="showPage('home')">
+    <span class="nav-icon">🏠</span>Home
+  </button>
+  <button class="nav-btn" id="nav-history" onclick="showPage('history')">
+    <span class="nav-icon">📋</span>History
+  </button>
+</div>
+
+<script>
+  const CAT_EMOJI = {
+    Food:'🍜', Transport:'🚗', Bills:'💡',
+    Shopping:'🛒', Entertainment:'🎮',
+    Education:'📚', Salary:'💼', Other:'💰'
+  };
+
+  let transactions  = JSON.parse(localStorage.getItem('kharcha_txns') || '[]');
+  let currentType   = 'income';
+  let currentPay    = 'cash';
+  let currentFilter = 'all';
+  let currentFilterH= 'all';
+
+  function save() { localStorage.setItem('kharcha_txns', JSON.stringify(transactions)); }
+
+  function fmt(n) { return '₹' + Number(n).toLocaleString('en-IN'); }
+
+  function formatDate(ts) {
+    const d = new Date(ts);
+    return d.getDate() + ' ' + d.toLocaleString('default',{month:'short'});
+  }
+
+  // ---- Month helpers (current month summary auto-resets to zero, purana data safe rehta hai) ----
+  function monthKey(ts) {
+    const d = new Date(ts);
+    return d.getFullYear() + '-' + d.getMonth();
+  }
+  function monthName(ts) {
+    const d = new Date(ts);
+    return d.toLocaleString('default',{month:'long'}) + ' ' + d.getFullYear();
+  }
+
+  // ---- AdMob bridge (Native Android se JS ko milta hai) ----
+  function showNativeAd() {
+    try {
+      if (window.AndroidAd && window.AndroidAd.showAd) window.AndroidAd.showAd();
+    } catch (e) { /* browser me test karte waqt AndroidAd nahi hoga, ignore */ }
+  }
+
+  // ---- Internet status banner ----
+  function updateOnlineStatus() {
+    const banner = document.getElementById('offline-banner');
+    banner.classList.toggle('show', !navigator.onLine);
+  }
+  window.addEventListener('online', updateOnlineStatus);
+  window.addEventListener('offline', updateOnlineStatus);
+
+  function setType(t) {
+    currentType = t;
+    document.getElementById('btn-income').classList.toggle('active', t==='income');
+    document.getElementById('btn-expense').classList.toggle('active', t==='expense');
+  }
+
+  function setPayment(p) {
+    currentPay = p;
+    document.getElementById('btn-cash').classList.toggle('active', p==='cash');
+    document.getElementById('btn-online').classList.toggle('active', p==='online');
+  }
+
+  function showPage(p) {
+    document.getElementById('home-page').classList.toggle('active', p==='home');
+    document.getElementById('history-page').classList.toggle('active', p==='history');
+    document.getElementById('nav-home').classList.toggle('active', p==='home');
+    document.getElementById('nav-history').classList.toggle('active', p==='history');
+    renderAll();
+    if (p === 'history') showNativeAd(); // history (last transactions) dekhne par ad
+  }
+
+  function setFilter(f, el) {
+    currentFilter = f;
+    document.querySelectorAll('#home-page .filter-chips .chip').forEach(c=>c.classList.remove('active'));
+    el.classList.add('active');
+    renderHome();
+  }
+
+  function setFilterH(f, el) {
+    currentFilterH = f;
+    document.querySelectorAll('#history-page .filter-chips .chip').forEach(c=>c.classList.remove('active'));
+    el.classList.add('active');
+    renderHistory();
+  }
+
+  function addTransaction() {
+    const name   = document.getElementById('txn-name').value.trim();
+    const amount = parseFloat(document.getElementById('txn-amount').value);
+    const cat    = document.getElementById('txn-category').value;
+    if (!name)            { alert('Transaction name daalo!'); return; }
+    if (!amount || amount<=0) { alert('Sahi amount daalo!'); return; }
+
+    transactions.unshift({ id:Date.now(), name, amount, cat, type:currentType, pay:currentPay, ts:Date.now() });
+    save();
+    document.getElementById('txn-name').value   = '';
+    document.getElementById('txn-amount').value = '';
+    renderAll();
+    showNativeAd(); // naya transaction add hone par ad
+  }
+
+  function deleteTransaction(id) {
+    transactions = transactions.filter(t => t.id !== id);
+    save(); renderAll();
+  }
+
+  function clearAll() {
+    if (confirm('Saari transactions delete karein?')) {
+      transactions = []; save(); renderAll();
+    }
+  }
+
+  function renderSummary() {
+    const now = Date.now();
+    const curKey = monthKey(now);
+    // Sirf current month ki transactions se totals — naye month me ye khud-ba-khud zero se start hoti hain
+    const curTxns = transactions.filter(t => monthKey(t.ts) === curKey);
+
+    const income  = curTxns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const expense = curTxns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const net     = income - expense;
+    const pct     = income>0 ? Math.min(Math.round(expense/income*100),100) : 0;
+
+    document.getElementById('net-balance').textContent   = fmt(net);
+    document.getElementById('total-income').textContent  = fmt(income);
+    document.getElementById('total-expense').textContent = fmt(expense);
+    document.getElementById('spend-pct').textContent     = pct + '%';
+
+    const fill = document.getElementById('progress-fill');
+    fill.style.width      = pct + '%';
+    fill.style.background = pct<50 ? '#22c55e' : pct<80 ? '#f59e0b' : '#ef4444';
+
+    let status = '😊 Pehle kuch add karo!';
+    if (curTxns.length > 0) {
+      if (pct===0)      status = '💰 Koi kharcha nahi!';
+      else if (pct<50)  status = '✅ Bahut badhiya savings!';
+      else if (pct<80)  status = '👍 Theek hai, thoda aur bachao!';
+      else if (pct<100) status = '⚠️ Zyada kharcha ho raha hai!';
+      else              status = '🚨 Income se zyada kharcha!';
+    }
+    document.getElementById('meter-status').textContent = status;
+
+    renderLastMonth(now);
+  }
+
+  // Pichle mahine ka total — sirf reference ke liye dikhta hai, current totals me count nahi hota
+  function renderLastMonth(now) {
+    const d = new Date(now);
+    const lastMonthDate = new Date(d.getFullYear(), d.getMonth()-1, 1);
+    const lastKey = monthKey(lastMonthDate.getTime());
+
+    const lastTxns = transactions.filter(t => monthKey(t.ts) === lastKey);
+    const card = document.getElementById('lastmonth-card');
+
+    if (lastTxns.length === 0) { card.style.display = 'none'; return; }
+
+    const income  = lastTxns.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+    const expense = lastTxns.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+
+    document.getElementById('lastmonth-name').textContent    = monthName(lastMonthDate.getTime());
+    document.getElementById('lastmonth-income').textContent  = '+' + fmt(income);
+    document.getElementById('lastmonth-expense').textContent = '-' + fmt(expense);
+    card.style.display = 'flex';
+  }
+
+  // showDel = true only on History page
+  function buildTxnHTML(t, showDel) {
+    const emoji  = CAT_EMOJI[t.cat] || '💰';
+    const sign   = t.type==='expense' ? '-' : '+';
+    const payBadge = t.pay
+      ? `<span class="pay-badge ${t.pay}">${t.pay==='cash'?'💵 Cash':'📱 Online'}</span>`
+      : '';
+    const delBtn = showDel
+      ? `<button class="txn-del" onclick="deleteTransaction(${t.id})">✕</button>`
+      : '';
+    return `
+      <div class="txn-item ${t.type}">
+        <div class="txn-emoji">${emoji}</div>
+        <div class="txn-info">
+          <div class="txn-name">${t.name}</div>
+          <div class="txn-meta">${t.cat} · ${formatDate(t.ts)} ${payBadge}</div>
+        </div>
+        <div class="txn-amount ${t.type}">${sign}${fmt(t.amount)}</div>
+        ${delBtn}
+      </div>`;
+  }
+
+  function renderHome() {
+    const list = transactions.filter(t =>
+      currentFilter==='all' || t.type===currentFilter
+    );
+    const el = document.getElementById('txn-list-home');
+    el.innerHTML = list.length === 0
+      ? `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Koi transaction nahi.<br>Kuch add karo! 😊</div></div>`
+      : list.map(t => buildTxnHTML(t, false)).join(''); // false = no delete
+  }
+
+  function renderHistory() {
+    const list = transactions.filter(t => {
+      if (currentFilterH==='all')    return true;
+      if (currentFilterH==='income') return t.type==='income';
+      if (currentFilterH==='expense')return t.type==='expense';
+      if (currentFilterH==='cash')   return t.pay==='cash';
+      if (currentFilterH==='online') return t.pay==='online';
+      return true;
+    });
+    const el = document.getElementById('txn-list-history');
+    el.innerHTML = list.length === 0
+      ? `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">Koi transaction nahi mili.</div></div>`
+      : list.map(t => buildTxnHTML(t, true)).join(''); // true = show delete
+  }
+
+  function renderAll() { renderSummary(); renderHome(); renderHistory(); }
+  updateOnlineStatus();
+  renderAll();
+</script>
+</body>
+</html>
